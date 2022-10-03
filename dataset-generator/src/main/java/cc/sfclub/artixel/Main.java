@@ -41,10 +41,6 @@ public class Main {
                     .forEach(it -> generateResource(it, lang, target));
         }
         System.out.println("Waiting...");
-        Thread.sleep(100);
-        while (true) {
-            Thread.yield();
-        }
     }
 
     @SneakyThrows
