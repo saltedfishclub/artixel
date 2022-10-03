@@ -1,0 +1,6 @@
+plugins {
+
+}
+
+group 'cc.sfclub'
+version '1.0-SNAPSHOT'
