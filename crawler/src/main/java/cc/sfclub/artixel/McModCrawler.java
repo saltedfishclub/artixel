@@ -30,6 +30,8 @@ public class McModCrawler extends AbstractCrawler {
     @SneakyThrows
     @Override
     public void run() {
+        crawl(455);
+        if (true) return;
         for (int i = 1; i < 7768; i++) {
             // https://www.mcmod.cn/item/list/2-1.html
             int finalI = i;
@@ -63,9 +65,7 @@ public class McModCrawler extends AbstractCrawler {
             var payload = withHeader("/item/" + id + ".html").GET().build();
             client.sendAsync(payload, HttpResponse.BodyHandlers.ofString())
                     .thenAccept(r -> readInfo(r, 0, Integer.parseInt(id)));
-            return;
         }
-        System.err.println("Cannot parse resp from " + i);
         //System.out.println(body);
     }
 
