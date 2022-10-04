@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
 public class McModCrawler extends AbstractCrawler {
     private static final Pattern PATTERN_EXTRACT_ID = Pattern.compile("href=\"\\/item\\/(\\d+)\\.html\"");
     private static final Pattern ENGLISH_NAME = Pattern.compile("<span class=\"name\" data-id=\"0\"><h5>(.*?)<\\/h5><\\/span>");
-    private static final Pattern IMAGE = Pattern.compile("(i\\.mcmod\\.cn\\/item\\/icon\\/128x128\\/\\d+\\/\\d+\\.png)");
+    private static final Pattern IMAGE = Pattern.compile("(i\\.mcmod\\.cn\\/item\\/icon\\/(.+)\\/\\d+\\/\\d+\\.png)");
 
     private static final Pattern COMMON_ASCII = Pattern.compile("^[a-zA-Z0-9-' ]+");
     private static final Pattern QUOTE = Pattern.compile("\\((.+)\\)");
@@ -30,8 +30,6 @@ public class McModCrawler extends AbstractCrawler {
     @SneakyThrows
     @Override
     public void run() {
-        crawl(455);
-        if (true) return;
         for (int i = 1; i < 7768; i++) {
             // https://www.mcmod.cn/item/list/2-1.html
             int finalI = i;
@@ -59,7 +57,7 @@ public class McModCrawler extends AbstractCrawler {
             var id = matcher.group(1);
             if (Files.exists(storage.resolve(id + ".txt"))) {
                 System.out.println("Already found: " + id);
-                return;
+                continue;
             }
             // i.mcmod.cn/item/icon/32x32/19/191087.png?v=1
             var payload = withHeader("/item/" + id + ".html").GET().build();
@@ -107,9 +105,10 @@ public class McModCrawler extends AbstractCrawler {
             System.err.println("Cannot find image for " + id);
             return;
         }
+        var resolution = matcher.group(2);
         // download
 
-        var payload = withHeader("").GET().uri(URI.create("https://" + matcher.group(1).replaceAll("128x128", "32x32"))).build();
+        var payload = withHeader("").GET().uri(URI.create("https://" + matcher.group(1).replaceAll(resolution, "32x32"))).build();
         System.out.println("Start downloading: " + id);
         client.sendAsync(payload, HttpResponse.BodyHandlers.ofFile(storage.resolve(id + ".png")));
         Files.writeString(storage.resolve(id + ".txt"), engName);
