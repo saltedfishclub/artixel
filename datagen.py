@@ -41,7 +41,7 @@ def extract_resource(zip: str):
                     dictKey = "item.minecraft." + key
                     if dictKey not in MOJANG_LANG:
                         print(f"Cannot find translation for {key}")
-                        translationName = key
+                        translationName = key.replace("_", " ")
                     else:
                         translationName = MOJANG_LANG[dictKey]
                     fd.write(translationName)
