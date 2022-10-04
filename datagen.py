@@ -85,6 +85,7 @@ def extract_resource(zip: str):
 
 if __name__ == "__main__":
     MOJANG_LANG = json.load(open("en_us.json"))
+    locales["minecraft"] = MOJANG_LANG
     for target_zip in sys.argv:
         if target_zip.endswith(".zip") or target_zip.endswith(".jar"):
             print(f"Processing {target_zip}")
