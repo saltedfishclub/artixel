@@ -141,7 +141,7 @@ def generate_images(model, test_input, tar):
     # Getting the pixel values in the [0, 1] range to plot.
     plt.imshow(display_list[i] * 0.5 + 0.5)
     plt.axis('off')
-  plt.show()
+  plt.show(block=False)
 
 log_dir="./logs/"
 summary_writer = tf.summary.create_file_writer(log_dir + "fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
