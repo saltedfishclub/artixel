@@ -46,6 +46,7 @@ public class McModCrawler extends AbstractCrawler {
                 .thenAccept(resp -> parseResp(resp, i));
     }
 
+    @SneakyThrows
     private void parseResp(HttpResponse<String> resp, int i) {
         Main.lastActive.set(System.currentTimeMillis());
         if (resp.statusCode() != 200) {
@@ -60,6 +61,7 @@ public class McModCrawler extends AbstractCrawler {
                 continue;
             }
             // i.mcmod.cn/item/icon/32x32/19/191087.png?v=1
+            Thread.sleep(1000L);
             var payload = withHeader("/item/" + id + ".html").GET().build();
             client.sendAsync(payload, HttpResponse.BodyHandlers.ofString())
                     .thenAccept(r -> readInfo(r, 0, Integer.parseInt(id)));
@@ -71,7 +73,7 @@ public class McModCrawler extends AbstractCrawler {
     private void readInfo(HttpResponse<String> resp, int retries, int id) {
         Main.lastActive.set(System.currentTimeMillis());
         if (resp.statusCode() != 200) {
-            System.err.println("Not 200! re-trying... " + retries);
+            System.err.println("Not 200! re-trying... " + retries + " statusCode: " + resp.statusCode());
             SCHEDULER.scheduleWithFixedDelay(() -> {
                 var payload = withHeader("/item/" + id + ".html").GET().build();
                 client.sendAsync(payload, HttpResponse.BodyHandlers.ofString())
@@ -109,6 +111,7 @@ public class McModCrawler extends AbstractCrawler {
         // download
 
         var payload = withHeader("").GET().uri(URI.create("https://" + matcher.group(1).replaceAll(resolution, "32x32"))).build();
+        Thread.sleep(1000L);
         System.out.println("Start downloading: " + id);
         client.sendAsync(payload, HttpResponse.BodyHandlers.ofFile(storage.resolve(id + ".png")));
         Files.writeString(storage.resolve(id + ".txt"), engName);
