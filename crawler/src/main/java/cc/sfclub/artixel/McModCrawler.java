@@ -13,8 +13,11 @@ import java.util.regex.Pattern;
 
 public class McModCrawler extends AbstractCrawler {
     private static final Pattern PATTERN_EXTRACT_ID = Pattern.compile("href=\"\\/item\\/(\\d+)\\.html\"");
-    private static final Pattern ENGLISH_NAME = Pattern.compile("<span class=\"name\" data-id=\"0\"><h5>.* ?\\((.*?)\\)<\\/h5><\\/span>");
+    private static final Pattern ENGLISH_NAME = Pattern.compile("<span class=\"name\" data-id=\"0\"><h5>(.*?)<\\/h5><\\/span>");
     private static final Pattern IMAGE = Pattern.compile("(i\\.mcmod\\.cn\\/item\\/icon\\/128x128\\/\\d+\\/\\d+\\.png)");
+
+    private static final Pattern COMMON_ASCII = Pattern.compile("^[a-zA-Z0-9-' ]+");
+    private static final Pattern QUOTE = Pattern.compile("\\((.+)\\)");
     private final HttpClient client;
     private final Path storage;
 
@@ -85,8 +88,17 @@ public class McModCrawler extends AbstractCrawler {
         if (matcher.find()) {
             // english name!
             engName = matcher.group(1);
+            if (!COMMON_ASCII.matcher(engName).matches()) {
+                // 氧化的铜块 (Oxidized Copper)
+                var m2 = QUOTE.matcher(engName);
+                if (!m2.find()) {
+                    System.err.println("Cannot find name for " + id + " : " + engName);
+                    return;
+                }
+                engName = m2.group(1);
+            }
         } else {
-            System.err.println("Cannot find english name for " + id);
+            System.err.println("Cannot find name for " + id);
             return;
         }
 
