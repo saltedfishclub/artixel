@@ -7,7 +7,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
@@ -32,19 +32,16 @@ public class McModCrawler extends AbstractCrawler {
     public void run() {
         for (int i = 1; i < 7768; i++) {
             // https://www.mcmod.cn/item/list/2-1.html
+            Main.lastActive.set(System.currentTimeMillis());
+            var req = withHeader("/item/list/" + i + "-1.html")
+                    .GET().build();
             int finalI = i;
-            ForkJoinPool.commonPool().submit(() -> crawl(finalI));
-            Thread.sleep(1000L);
+            client.sendAsync(req, HttpResponse.BodyHandlers.ofString())
+                    .thenAccept(resp -> parseResp(resp, finalI));
+            Thread.sleep(ThreadLocalRandom.current().nextInt(1000, 3000));
         }
     }
 
-    private void crawl(int i) {
-        Main.lastActive.set(System.currentTimeMillis());
-        var req = withHeader("/item/list/" + i + "-1.html")
-                .GET().build();
-        client.sendAsync(req, HttpResponse.BodyHandlers.ofString())
-                .thenAccept(resp -> parseResp(resp, i));
-    }
 
     @SneakyThrows
     private void parseResp(HttpResponse<String> resp, int i) {
@@ -56,12 +53,12 @@ public class McModCrawler extends AbstractCrawler {
         var matcher = PATTERN_EXTRACT_ID.matcher(body);
         while (matcher.find()) {
             var id = matcher.group(1);
-            if (Files.exists(storage.resolve(id + ".txt"))) {
+            if (Files.exists(storage.resolve(id + ".jpg"))) {
                 System.out.println("Already found: " + id);
                 continue;
             }
             // i.mcmod.cn/item/icon/32x32/19/191087.png?v=1
-            Thread.sleep(1000L);
+            Thread.sleep(ThreadLocalRandom.current().nextInt(3000, 6000));
             var payload = withHeader("/item/" + id + ".html").GET().build();
             client.sendAsync(payload, HttpResponse.BodyHandlers.ofString())
                     .thenAccept(r -> readInfo(r, 0, Integer.parseInt(id)));
@@ -78,7 +75,7 @@ public class McModCrawler extends AbstractCrawler {
                 var payload = withHeader("/item/" + id + ".html").GET().build();
                 client.sendAsync(payload, HttpResponse.BodyHandlers.ofString())
                         .thenAccept(r -> readInfo(r, retries + 1, id));
-            }, 0L, 5L, TimeUnit.SECONDS);
+            }, 0L, 15L, TimeUnit.SECONDS);
             return;
         }
         var body = resp.body();
@@ -111,7 +108,7 @@ public class McModCrawler extends AbstractCrawler {
         // download
 
         var payload = withHeader("").GET().uri(URI.create("https://" + matcher.group(1).replaceAll(resolution, "32x32"))).build();
-        Thread.sleep(1000L);
+        Thread.sleep(ThreadLocalRandom.current().nextInt(1000, 3000));
         System.out.println("Start downloading: " + id);
         client.sendAsync(payload, HttpResponse.BodyHandlers.ofFile(storage.resolve(id + ".png")));
         Files.writeString(storage.resolve(id + ".txt"), engName);

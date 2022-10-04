@@ -9,6 +9,7 @@ build/
 *.iml
 run
 out
+venv
 
 ### Eclipse ###
 .apt_generated

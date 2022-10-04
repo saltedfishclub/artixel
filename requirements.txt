@@ -1,1 +1,2 @@
 pillow
+json5

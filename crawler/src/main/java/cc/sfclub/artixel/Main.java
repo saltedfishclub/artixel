@@ -2,11 +2,13 @@ package cc.sfclub.artixel;
 
 import java.net.http.HttpClient;
 import java.nio.file.Path;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class Main {
     public static AtomicLong lastActive = new AtomicLong(System.currentTimeMillis());
     private final HttpClient client = HttpClient.newBuilder()
+            .executor(Executors.newFixedThreadPool(4))
             //  .sslParameters(prepareSSLParameter())
             .build();
 
