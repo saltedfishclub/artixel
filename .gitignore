@@ -35,3 +35,8 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+### Train Data ###
+/test/
+/train/
+/logs/
