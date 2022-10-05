@@ -30,18 +30,18 @@ lowerCaseRegex = "[a-z]+[A-Z0-9][a-z0-9]+[A-Za-z0-9]*"
 
 
 def process(data: str) -> str:
-    result = data.replace("-", " ").replace(".", " ")
+    _result = data.replace("-", " ").replace(".", " ")
     match = re.match(MATCH_NUMBER_REGEX, data)
     if match:
         num = match.group(1)
-        result = data.removesuffix(num)
-        result += " " + num
-        print(f"Fixed {data} -> {result}")
-    if re.match(lowerCaseRegex, result):
-        result = get_lower_case_name(result)  # .removeprefix("item ")
-        print(f"Fixed {data} -> {result}")
-        return result
-    return result  # .removeprefix("item").removeprefix(" ")
+        _result = data.removesuffix(num)
+        _result += " " + num
+        # print(f"Fixed {data} -> {_result}")
+    if re.match(lowerCaseRegex, _result):
+        _result = get_lower_case_name(_result)  # .removeprefix("item ")
+        # print(f"Fixed {data} -> {_result}")
+        return _result
+    return _result  # .removeprefix("item").removeprefix(" ")
 
 
 def get_lower_case_name(text):
@@ -71,9 +71,14 @@ if __name__ == "__main__":
             if remove:
                 os.remove(path)
         if file.endswith(".txt"):
-            with io.FileIO(path, "r+") as fd:
+            if not os.path.exists(path):
+                continue
+            with io.FileIO(path, "r") as fd:
                 data: str = fd.read().decode("utf-8")
-                fd.write(bytes(process(data), "utf-8"))
+                result = process(data).replace(".", "").replace("-", "")
+            with io.FileIO(path, "w") as fd:
+                fd.write(bytes(result, "utf-8"))
+                #print(f"Fixed {data} -> {result}")
 
     # invoke magick
     os.system(f"mogrify {folder}/*.png")
