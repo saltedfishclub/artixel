@@ -225,6 +225,7 @@ def fit(train_ds, test_ds, steps):
 
       if (not UNATTENDED_TRAIN):
         generate_images(generator, example_input, example_target)
+
       print(f"Step: {step//1000}k")
 
     train_step(input_image, target, step)

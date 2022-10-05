@@ -1,7 +1,7 @@
 import io
 import os
+import re
 import sys
-
 from PIL import Image, UnidentifiedImageError
 
 
@@ -21,8 +21,37 @@ def verify(file: str):
             return True
         img.verify()
     except (IOError, SyntaxError, UnidentifiedImageError) as e:
-        print(f"Found a BROKEN image: " + file)
+        print(f"Found a BROKEN image: " + file + f" Err: {e}")
         return True
+
+
+MATCH_NUMBER_REGEX = "^.\w+[^ ]?(\d+)$"
+lowerCaseRegex = "[a-z]+[A-Z0-9][a-z0-9]+[A-Za-z0-9]*"
+
+
+def process(data: str) -> str:
+    _result = data.replace("-", " ").replace(".", " ")
+    match = re.match(MATCH_NUMBER_REGEX, data)
+    if match:
+        num = match.group(1)
+        _result = data.removesuffix(num)
+        _result += " " + num
+        # print(f"Fixed {data} -> {_result}")
+    if re.match(lowerCaseRegex, _result):
+        _result = get_lower_case_name(_result)  # .removeprefix("item ")
+        # print(f"Fixed {data} -> {_result}")
+        return _result
+    return _result  # .removeprefix("item").removeprefix(" ")
+
+
+def get_lower_case_name(text):
+    lst = []
+    for index, char in enumerate(text):
+        if char.isupper() and index != 0:
+            lst.append(" ")
+        lst.append(char)
+
+    return "".join(lst).lower()
 
 
 if __name__ == "__main__":
@@ -31,9 +60,9 @@ if __name__ == "__main__":
         exit(0)
     folder = sys.argv[1]
     for file in os.listdir(folder):
+        path = folder + "/" + file
         if file.endswith(".png"):
             remove = False
-            path = folder + "/" + file
             if verify(path):
                 remove = True
                 transKey = path.removesuffix(".png") + ".txt"
@@ -41,3 +70,15 @@ if __name__ == "__main__":
                     os.remove(transKey)
             if remove:
                 os.remove(path)
+        if file.endswith(".txt"):
+            if not os.path.exists(path):
+                continue
+            with io.FileIO(path, "r") as fd:
+                data: str = fd.read().decode("utf-8")
+                result = process(data).replace(".", "").replace("-", "")
+            with io.FileIO(path, "w") as fd:
+                fd.write(bytes(result, "utf-8"))
+                #print(f"Fixed {data} -> {result}")
+
+    # invoke magick
+    os.system(f"mogrify {folder}/*.png")
