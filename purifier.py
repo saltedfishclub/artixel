@@ -1,7 +1,7 @@
 import io
 import os
+import re
 import sys
-
 from PIL import Image, UnidentifiedImageError
 
 
@@ -21,8 +21,37 @@ def verify(file: str):
             return True
         img.verify()
     except (IOError, SyntaxError, UnidentifiedImageError) as e:
-        print(f"Found a BROKEN image: " + file)
+        print(f"Found a BROKEN image: " + file + f" Err: {e}")
         return True
+
+
+MATCH_NUMBER_REGEX = "^.\w+[^ ]?(\d+)$"
+lowerCaseRegex = "[a-z]+[A-Z0-9][a-z0-9]+[A-Za-z0-9]*"
+
+
+def process(data: str) -> str:
+    result = data.replace("-", " ").replace(".", " ")
+    match = re.match(MATCH_NUMBER_REGEX, data)
+    if match:
+        num = match.group(1)
+        result = data.removesuffix(num)
+        result += " " + num
+        print(f"Fixed {data} -> {result}")
+    if re.match(lowerCaseRegex, result):
+        result = get_lower_case_name(result)  # .removeprefix("item ")
+        print(f"Fixed {data} -> {result}")
+        return result
+    return result  # .removeprefix("item").removeprefix(" ")
+
+
+def get_lower_case_name(text):
+    lst = []
+    for index, char in enumerate(text):
+        if char.isupper() and index != 0:
+            lst.append(" ")
+        lst.append(char)
+
+    return "".join(lst).lower()
 
 
 if __name__ == "__main__":
@@ -31,9 +60,9 @@ if __name__ == "__main__":
         exit(0)
     folder = sys.argv[1]
     for file in os.listdir(folder):
+        path = folder + "/" + file
         if file.endswith(".png"):
             remove = False
-            path = folder + "/" + file
             if verify(path):
                 remove = True
                 transKey = path.removesuffix(".png") + ".txt"
@@ -41,3 +70,10 @@ if __name__ == "__main__":
                     os.remove(transKey)
             if remove:
                 os.remove(path)
+        if file.endswith(".txt"):
+            with io.FileIO(path, "r+") as fd:
+                data: str = fd.read().decode("utf-8")
+                fd.write(bytes(process(data), "utf-8"))
+
+    # invoke magick
+    os.system(f"mogrify {folder}/*.png")

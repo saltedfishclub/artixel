@@ -130,7 +130,7 @@ checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
 
 def generate_images(model, test_input, tar):
   prediction = model(test_input, training=True)
-  plt.figure(figsize=(15, 15))
+#  plt.figure(figsize=(15, 15))
 
   display_list = [tar[0], prediction[0]]
   title = [test_input[0], 'Predicted Image']
@@ -181,7 +181,7 @@ def fit(train_ds, test_ds, steps):
 
       start = time.time()
 
-      generate_images(generator, example_input, example_target)
+      # generate_images(generator, example_input, example_target)
       print(f"Step: {step//1000}k")
 
     train_step(input_image, target, step)

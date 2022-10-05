@@ -2,7 +2,6 @@ pillow
 json5
 tensorflow
 pathlib
-time
 datetime
 matplotlib
 IPython
