@@ -74,7 +74,7 @@ def NLP():
 nlp = NLP()
 def Generator():
   initializer = tf.random_normal_initializer(0., 0.02)
-  x = nlp;
+  x = nlp
   x = tf.keras.layers.BatchNormalization()(x)
   x = tf.keras.layers.Dropout(0.2)(x)
   x = tf.keras.layers.Conv2DTranspose(3, 4,
@@ -195,7 +195,12 @@ def fit(train_ds, test_ds, steps):
     if (step + 1) % 5000 == 0:
       checkpoint.save(file_prefix=checkpoint_prefix)
 
+model_dir = './saved_model'
 
 if __name__ == "__main__":
   checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir))
   fit(train_dataset, test_dataset, steps=40000)
+  generator_path = os.path.join(model_dir, 'generator')
+  tf.saved_model.save(generator, generator_path)
+  discriminator_path = os.path.join(model_dir, 'discriminator')
+  tf.saved_model.save(discriminator, discriminator_path)
