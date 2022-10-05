@@ -6,6 +6,7 @@ from IPython import display
 from matplotlib import pyplot as plt
 
 UNATTENDED_TRAIN = False
+USE_OLD_MODEL = True
 
 BUFFER_SIZE = 1000
 BATCH_SIZE = 32
@@ -22,7 +23,6 @@ def load(image_file):
 def normalize(image):
   image = (image / 127.5) - 1
   return image
-@tf.function
 def random_jitter(image):
   if tf.random.uniform(()) > 0.5:
     image = tf.image.flip_left_right(image)
@@ -64,81 +64,115 @@ def Encoder():
   return x
 encoder = Encoder()
 def NLP():
-  x = encoder
-  x = tf.keras.layers.Embedding(
+  if USE_OLD_MODEL:
+    x = encoder
+    x = tf.keras.layers.Embedding(
         input_dim=vocabulary,
         input_length=32,
-        output_dim=512)(x)
-  x = tf.keras.layers.GRU(512, return_sequences=True)(x)
-  x = tf.keras.layers.GRU(512)(x)
+        output_dim=32)(x)
+    x = tf.keras.layers.LSTM(32, return_sequences=True)(x)
+    x = tf.keras.layers.Reshape((32, 32, 1))(x)
+  else:
+    x = encoder
+    x = tf.keras.layers.Embedding(
+          input_dim=vocabulary,
+          input_length=32,
+          output_dim=512)(x)
+    x = tf.keras.layers.LSTM(512)(x)
   return x
 nlp = NLP() # (512)
 def Generator():
-  initializer = tf.random_normal_initializer(0., 0.02)
-  x = nlp
-  x = tf.keras.layers.Reshape((1, 1, 512))(x) # (1, 1, 512)
-  x = tf.keras.layers.Conv2DTranspose(256, 4,
-                    strides=2,
-                    padding='same',
-                    kernel_initializer=initializer)(x) # (2, 2, 256)
-  x = tf.keras.layers.Dropout(0.2)(x)
-  x = tf.keras.layers.ReLU()(x)
-  x = tf.keras.layers.Conv2DTranspose(128, 4,
-                    strides=2,
-                    padding='same',
-                    kernel_initializer=initializer)(x) # (4, 4, 128)
-  x = tf.keras.layers.Dropout(0.2)(x)
-  x = tf.keras.layers.ReLU()(x)
-  x = tf.keras.layers.Conv2DTranspose(64, 4,
-                    strides=2,
-                    padding='same',
-                    kernel_initializer=initializer)(x) # (8, 8, 64)
-  x = tf.keras.layers.ReLU()(x)
-  x = tf.keras.layers.Conv2DTranspose(32, 4,
-                    strides=2,
-                    padding='same',
-                    kernel_initializer=initializer)(x) # (16, 16, 32)
-  x = tf.keras.layers.ReLU()(x)
-  x = tf.keras.layers.Conv2DTranspose(3, 4,
-                    strides=2,
-                    padding='same',
-                    kernel_initializer=initializer,
-                    activation='tanh')(x) # (32, 32, 3)
-  return tf.keras.Model(inputs=encoder_input, outputs=x)
+  if USE_OLD_MODEL:
+    initializer = tf.random_normal_initializer(0., 0.02)
+    x = nlp
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Dropout(0.2)(x)
+    x = tf.keras.layers.Conv2DTranspose(3, 4,
+                      strides=1,
+                      padding='same',
+                      kernel_initializer=initializer,
+                      activation='tanh')(x)
+    return tf.keras.Model(inputs=encoder_input, outputs=x)
+  else:
+    initializer = tf.random_normal_initializer(0., 0.02)
+    x = nlp
+    x = tf.keras.layers.Reshape((1, 1, 512))(x) # (1, 1, 512)
+    x = tf.keras.layers.Conv2DTranspose(256, 4,
+                      strides=2,
+                      padding='same',
+                      kernel_initializer=initializer)(x) # (2, 2, 256)
+    x = tf.keras.layers.Dropout(0.2)(x)
+    x = tf.keras.layers.ReLU()(x)
+    x = tf.keras.layers.Conv2DTranspose(128, 4,
+                      strides=2,
+                      padding='same',
+                      kernel_initializer=initializer)(x) # (4, 4, 128)
+    x = tf.keras.layers.Dropout(0.2)(x)
+    x = tf.keras.layers.ReLU()(x)
+    x = tf.keras.layers.Conv2DTranspose(64, 4,
+                      strides=2,
+                      padding='same',
+                      kernel_initializer=initializer)(x) # (8, 8, 64)
+    x = tf.keras.layers.ReLU()(x)
+    x = tf.keras.layers.Conv2DTranspose(32, 4,
+                      strides=2,
+                      padding='same',
+                      kernel_initializer=initializer)(x) # (16, 16, 32)
+    x = tf.keras.layers.ReLU()(x)
+    x = tf.keras.layers.Conv2DTranspose(3, 4,
+                      strides=2,
+                      padding='same',
+                      kernel_initializer=initializer,
+                      activation='tanh')(x) # (32, 32, 3)
+    return tf.keras.Model(inputs=encoder_input, outputs=x)
 generator = Generator()
 def Discriminator():
-  initializer = tf.random_normal_initializer(0., 0.02)
-  img = tf.keras.Input(shape=(32, 32, 3))
-  x = tf.keras.layers.Conv2D(32, 4,
-                        strides=2,
-                        padding='same',
-                        kernel_initializer=initializer)(img) # (16, 16, 32)
-  x = tf.keras.layers.LeakyReLU()(x)
-  x = tf.keras.layers.Conv2D(64, 4,
-                        strides=2,
-                        padding='same',
-                        kernel_initializer=initializer)(x) # (8, 8, 64)
-  x = tf.keras.layers.LeakyReLU()(x)
-  x = tf.keras.layers.Conv2D(128, 4,
-                        strides=2,
-                        padding='same',
-                        kernel_initializer=initializer)(x) # (4, 4, 128)
-  x = tf.keras.layers.LeakyReLU()(x)
-  x = tf.keras.layers.Conv2D(256, 4,
-                        strides=2,
-                        padding='same',
-                        kernel_initializer=initializer)(x) # (2, 2, 256)
-  x = tf.keras.layers.LeakyReLU()(x)
-  x = tf.keras.layers.Conv2D(512, 4,
-                        strides=2,
-                        padding='same',
-                        kernel_initializer=initializer)(x) # (1, 1, 512)
-  x = tf.keras.layers.LeakyReLU()(x)
-  x = tf.keras.layers.Flatten()(x) # (512)
-  x = tf.keras.layers.Concatenate()([nlp, x]) # (1024)
-  x = tf.keras.layers.Dense(1024, activation='relu')(x) # (1024)
-  x = tf.keras.layers.Dense(1)(x) # (1)
-  return tf.keras.Model(inputs=[encoder_input, img], outputs=x)
+  if USE_OLD_MODEL:
+    initializer = tf.random_normal_initializer(0., 0.02)
+    img = tf.keras.Input(shape=(32, 32, 3))
+    x = tf.keras.layers.Concatenate()([nlp, img])
+    x = tf.keras.layers.Conv2D(64, 4,
+                   strides=1,
+                   padding='same',
+                   kernel_initializer=initializer,
+                   use_bias=False)(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.LeakyReLU()(x)
+    x = tf.keras.layers.Conv2D(1, 4, strides=1, padding='same', kernel_initializer=initializer)(x)
+    return tf.keras.Model(inputs=[encoder_input, img], outputs=x)
+  else:
+    initializer = tf.random_normal_initializer(0., 0.02)
+    img = tf.keras.Input(shape=(32, 32, 3))
+    x = tf.keras.layers.Conv2D(32, 4,
+                          strides=2,
+                          padding='same',
+                          kernel_initializer=initializer)(img) # (16, 16, 32)
+    x = tf.keras.layers.LeakyReLU()(x)
+    x = tf.keras.layers.Conv2D(64, 4,
+                          strides=2,
+                          padding='same',
+                          kernel_initializer=initializer)(x) # (8, 8, 64)
+    x = tf.keras.layers.LeakyReLU()(x)
+    x = tf.keras.layers.Conv2D(128, 4,
+                          strides=2,
+                          padding='same',
+                          kernel_initializer=initializer)(x) # (4, 4, 128)
+    x = tf.keras.layers.LeakyReLU()(x)
+    x = tf.keras.layers.Conv2D(256, 4,
+                          strides=2,
+                          padding='same',
+                          kernel_initializer=initializer)(x) # (2, 2, 256)
+    x = tf.keras.layers.LeakyReLU()(x)
+    x = tf.keras.layers.Conv2D(512, 4,
+                          strides=2,
+                          padding='same',
+                          kernel_initializer=initializer)(x) # (1, 1, 512)
+    x = tf.keras.layers.LeakyReLU()(x)
+    x = tf.keras.layers.Flatten()(x) # (512)
+    x = tf.keras.layers.Concatenate()([nlp, x]) # (1024)
+    x = tf.keras.layers.Dense(1024, activation='relu')(x) # (1024)
+    x = tf.keras.layers.Dense(1)(x) # (1)
+    return tf.keras.Model(inputs=[encoder_input, img], outputs=x)
 discriminator = Discriminator()
 
 LAMBDA = 100
@@ -170,8 +204,8 @@ checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
                  generator=generator,
                  discriminator=discriminator)
 
-def generate_images(model, test_input, tar):
-  prediction = model(test_input, training=True)
+def generate_images(test_input, tar):
+  prediction = generator(test_input, training=True)
   plt.figure(figsize=(15, 15))
 
   display_list = [tar[0], prediction[0]]
@@ -185,10 +219,8 @@ def generate_images(model, test_input, tar):
     plt.axis('off')
   plt.show()
 
-log_dir="./logs/"
-summary_writer = tf.summary.create_file_writer(log_dir + "fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 @tf.function
-def train_step(name, target, step):
+def train_step(name, target):
   with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
     gen_output = generator(name, training=True)
 
@@ -204,46 +236,28 @@ def train_step(name, target, step):
   generator_optimizer.apply_gradients(zip(generator_gradients, generator.trainable_variables))
   discriminator_optimizer.apply_gradients(zip(discriminator_gradients, discriminator.trainable_variables))
 
-  with summary_writer.as_default():
-    tf.summary.scalar('gen_total_loss', gen_total_loss, step=step//1000)
-    tf.summary.scalar('gen_gan_loss', gen_gan_loss, step=step//1000)
-    tf.summary.scalar('gen_l1_loss', gen_l1_loss, step=step//1000)
-    tf.summary.scalar('disc_loss', disc_loss, step=step//1000)
+  return gen_total_loss, gen_gan_loss, gen_l1_loss, disc_loss
 
-def fit(train_ds, test_ds, steps):
-  example_input, example_target = next(iter(test_ds.take(1)))
-  start = time.time()
+def fit(epochs):
+  example_input, example_target = next(iter(train_dataset.take(1)))
+  for epoch in range(epochs):
+      start_time = time.time()
+      for name, target in train_dataset:
+        gen_total_loss, gen_gan_loss, gen_l1_loss, disc_loss = train_step(name, target)
 
-  for step, (input_image, target) in train_ds.repeat().take(steps).enumerate():
-    if int(step) % 1000 == 0:
-      display.clear_output(wait=True)
+      # saving (checkpoint) the model every 20 epochs
+      if (epoch + 1) % 20 == 0:
+        checkpoint.save(file_prefix=checkpoint_prefix)
 
-      if step != 0:
-        print(f'Time taken for 1000 steps: {time.time()-start:.2f} sec\n')
-
-      start = time.time()
-
-      if (not UNATTENDED_TRAIN):
-        generate_images(generator, example_input, example_target)
-
-      print(f"Step: {step//1000}k")
-
-    train_step(input_image, target, step)
-
-    # Training step
-    if (int(step) + 1) % 10 == 0:
-      print('.', end='', flush=True)
-
-
-    # Save (checkpoint) the model every 5k steps
-    if (int(step) + 1) % 5000 == 0:
-      checkpoint.save(file_prefix=checkpoint_prefix)
+      print (f'Epoch {epoch}, Time {time.time()-start_time:.2f}s, Generator loss {gen_total_loss}, Generator GAN loss {gen_gan_loss}, Generator L1 loss {gen_l1_loss}, Discriminator Loss {disc_loss}\n')
+      if (epoch + 1) % 20 == 0 and (not UNATTENDED_TRAIN):
+        generate_images(example_input, example_target)
 
 model_dir = './saved_model'
 
 if __name__ == "__main__":
   checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir))
-  fit(train_dataset, test_dataset, steps=40000)
+  fit(100)
   generator_path = os.path.join(model_dir, 'generator')
   tf.saved_model.save(generator, generator_path)
   discriminator_path = os.path.join(model_dir, 'discriminator')
