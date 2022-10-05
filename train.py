@@ -13,7 +13,7 @@ BATCH_SIZE = 32
 def load(image_file):
   image = tf.io.read_file(image_file)
   image = tf.io.decode_image(image, channels=3, expand_animations=False)
-  image = tf.image.resize_with_pad(image, 32, 32)
+  image = tf.image.resize_with_crop_or_pad(image, 32, 32)
   image = tf.cast(image, tf.float32)
 
   name_file = tf.strings.substr(image_file, tf.zeros(tf.shape(image_file), dtype=tf.dtypes.int32), tf.strings.length(image_file) - 3) + 'txt'
