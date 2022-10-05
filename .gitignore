@@ -40,3 +40,4 @@ bin/
 /test/
 /train/
 /logs/
+/training_checkpoints/
