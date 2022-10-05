@@ -5,9 +5,10 @@ import time
 from IPython import display
 from matplotlib import pyplot as plt
 
+UNATTENDED_TRAIN = False
+
 BUFFER_SIZE = 1000
 BATCH_SIZE = 32
-
 
 def load(image_file):
   image = tf.io.read_file(image_file)
@@ -67,35 +68,76 @@ def NLP():
   x = tf.keras.layers.Embedding(
         input_dim=vocabulary,
         input_length=32,
-        output_dim=32)(x)
-  x = tf.keras.layers.LSTM(32, return_sequences=True)(x)
-  x = tf.keras.layers.Reshape((32, 32, 1))(x)
+        output_dim=512)(x)
+  x = tf.keras.layers.GRU(512, return_sequences=True)(x)
+  x = tf.keras.layers.GRU(512)(x)
   return x
-nlp = NLP()
+nlp = NLP() # (512)
 def Generator():
   initializer = tf.random_normal_initializer(0., 0.02)
   x = nlp
-  x = tf.keras.layers.BatchNormalization()(x)
+  x = tf.keras.layers.Reshape((1, 1, 512))(x) # (1, 1, 512)
+  x = tf.keras.layers.Conv2DTranspose(256, 4,
+                    strides=2,
+                    padding='same',
+                    kernel_initializer=initializer)(x) # (2, 2, 256)
   x = tf.keras.layers.Dropout(0.2)(x)
+  x = tf.keras.layers.ReLU()(x)
+  x = tf.keras.layers.Conv2DTranspose(128, 4,
+                    strides=2,
+                    padding='same',
+                    kernel_initializer=initializer)(x) # (4, 4, 128)
+  x = tf.keras.layers.Dropout(0.2)(x)
+  x = tf.keras.layers.ReLU()(x)
+  x = tf.keras.layers.Conv2DTranspose(64, 4,
+                    strides=2,
+                    padding='same',
+                    kernel_initializer=initializer)(x) # (8, 8, 64)
+  x = tf.keras.layers.ReLU()(x)
+  x = tf.keras.layers.Conv2DTranspose(32, 4,
+                    strides=2,
+                    padding='same',
+                    kernel_initializer=initializer)(x) # (16, 16, 32)
+  x = tf.keras.layers.ReLU()(x)
   x = tf.keras.layers.Conv2DTranspose(3, 4,
-                    strides=1,
+                    strides=2,
                     padding='same',
                     kernel_initializer=initializer,
-                    activation='tanh')(x)
+                    activation='tanh')(x) # (32, 32, 3)
   return tf.keras.Model(inputs=encoder_input, outputs=x)
 generator = Generator()
 def Discriminator():
   initializer = tf.random_normal_initializer(0., 0.02)
   img = tf.keras.Input(shape=(32, 32, 3))
-  x = tf.keras.layers.Concatenate()([nlp, img])
-  x = tf.keras.layers.Conv2D(64, 4,
-                 strides=1,
-                 padding='same',
-                 kernel_initializer=initializer,
-                 use_bias=False)(x)
-  x = tf.keras.layers.BatchNormalization()(x)
+  x = tf.keras.layers.Conv2D(32, 4,
+                        strides=2,
+                        padding='same',
+                        kernel_initializer=initializer)(img) # (16, 16, 32)
   x = tf.keras.layers.LeakyReLU()(x)
-  x = tf.keras.layers.Conv2D(1, 4, strides=1, padding='same', kernel_initializer=initializer)(x)
+  x = tf.keras.layers.Conv2D(64, 4,
+                        strides=2,
+                        padding='same',
+                        kernel_initializer=initializer)(x) # (8, 8, 64)
+  x = tf.keras.layers.LeakyReLU()(x)
+  x = tf.keras.layers.Conv2D(128, 4,
+                        strides=2,
+                        padding='same',
+                        kernel_initializer=initializer)(x) # (4, 4, 128)
+  x = tf.keras.layers.LeakyReLU()(x)
+  x = tf.keras.layers.Conv2D(256, 4,
+                        strides=2,
+                        padding='same',
+                        kernel_initializer=initializer)(x) # (2, 2, 256)
+  x = tf.keras.layers.LeakyReLU()(x)
+  x = tf.keras.layers.Conv2D(512, 4,
+                        strides=2,
+                        padding='same',
+                        kernel_initializer=initializer)(x) # (1, 1, 512)
+  x = tf.keras.layers.LeakyReLU()(x)
+  x = tf.keras.layers.Flatten()(x) # (512)
+  x = tf.keras.layers.Concatenate()([nlp, x]) # (1024)
+  x = tf.keras.layers.Dense(1024, activation='relu')(x) # (1024)
+  x = tf.keras.layers.Dense(1)(x) # (1)
   return tf.keras.Model(inputs=[encoder_input, img], outputs=x)
 discriminator = Discriminator()
 
@@ -141,7 +183,7 @@ def generate_images(model, test_input, tar):
     # Getting the pixel values in the [0, 1] range to plot.
     plt.imshow(display_list[i] * 0.5 + 0.5)
     plt.axis('off')
-  plt.show(block=False)
+  plt.show()
 
 log_dir="./logs/"
 summary_writer = tf.summary.create_file_writer(log_dir + "fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
@@ -181,7 +223,8 @@ def fit(train_ds, test_ds, steps):
 
       start = time.time()
 
-      generate_images(generator, example_input, example_target)
+      if (not UNATTENDED_TRAIN):
+        generate_images(generator, example_input, example_target)
       print(f"Step: {step//1000}k")
 
     train_step(input_image, target, step)
