@@ -1,4 +1,4 @@
-# Artixel
+# Artixel 
 
 A rough implementation of generating pixel arts.
 
